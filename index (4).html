@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LinkedIn Profile Scorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #1a1f2e;
+      --surface: #222840;
+      --surface2: #1e2438;
+      --border: #2e3650;
+      --accent: #4db8d4;
+      --score: #e8705a;
+      --text: #ffffff;
+      --muted: #8892a4;
+      --positive: #4db8d4;
+      --zero: #4a5568;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Geist', sans-serif; font-weight: 300;
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 40px; border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-family: 'DM Mono', monospace; font-size: 13px;
+      color: var(--accent); letter-spacing: 0.08em;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent); color: #1a1f2e;
+      font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+      padding: 9px 18px; border-radius: 6px; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+
+    main {
+      flex: 1; display: grid; grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: center;
+      padding: 56px 40px; max-width: 960px; margin: 0 auto; width: 100%;
+    }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid var(--border); background: var(--surface2);
+      padding: 5px 12px; border-radius: 100px;
+      font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted);
+      letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 24px;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    h1 {
+      font-family: 'Instrument Serif', serif;
+      font-size: clamp(34px, 4.5vw, 54px);
+      font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 18px;
+    }
+    h1 em { font-style: italic; color: var(--score); }
+
+    .sub { font-size: 14px; color: var(--muted); line-height: 1.75; margin-bottom: 32px; }
+
+    .features { display: flex; flex-direction: column; gap: 9px; }
+    .feature { display: flex; gap: 10px; font-size: 13px; color: var(--muted); }
+    .fi { color: var(--accent); flex-shrink: 0; margin-top: 1px; }
+
+    /* CARD — mirrors extension UI exactly */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .card-title {
+      padding: 16px 20px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-title span { font-size: 15px; font-weight: 500; color: var(--accent); }
+    .card-title .x { color: var(--muted); font-size: 18px; cursor: default; }
+
+    .card-body { padding: 28px 20px 20px; text-align: center; }
+
+    .score-num {
+      font-family: 'Instrument Serif', serif;
+      font-size: 80px; line-height: 1;
+      color: var(--score); display: block; margin-bottom: 6px;
+    }
+    .score-fit {
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      color: var(--score); letter-spacing: 0.15em;
+      text-transform: uppercase; margin-bottom: 24px; display: block;
+    }
+
+    .criteria {
+      background: var(--surface2); border-radius: 8px;
+      overflow: hidden; text-align: left;
+    }
+    .crit {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 11px 16px; font-size: 13px; color: #c8d0de;
+      border-bottom: 1px solid var(--border);
+    }
+    .crit:last-child { border-bottom: none; }
+    .crit-val {
+      font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+    }
+    .crit-val.pos { color: var(--positive); }
+    .crit-val.zero { color: var(--zero); }
+
+    footer {
+      text-align: center; padding: 18px;
+      font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted);
+      border-top: 1px solid var(--border); letter-spacing: 0.05em;
+    }
+
+    @media (max-width: 680px) {
+      main { grid-template-columns: 1fr; padding: 36px 24px; gap: 36px; }
+      nav { padding: 16px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">Auto Scorer</div>
+    <a href="#" class="btn">Add to Chrome</a>
+  </nav>
+
+  <main>
+    <div class="left">
+      <div class="badge"><span class="dot"></span> Chrome Extension · Free</div>
+      <h1>Score candidates.<br/><em>Instantly.</em></h1>
+      <p class="sub">Define your hiring rubric once. The extension scores every LinkedIn profile against it in real time — right on the page.</p>
+      <div class="features">
+        <div class="feature"><span class="fi">✦</span> LLM scores each profile against your criteria</div>
+        <div class="feature"><span class="fi">✦</span> Highlights matching &amp; missing keywords inline</div>
+        <div class="feature"><span class="fi">✦</span> Works on LinkedIn &amp; LinkedIn Recruiter</div>
+        <div class="feature"><span class="fi">✦</span> Custom rubrics per role, saved automatically</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>Auto Scorer</span>
+        <span class="x">×</span>
+      </div>
+      <div class="card-body">
+        <span class="score-num">82</span>
+        <span class="score-fit">Strong Fit</span>
+        <div class="criteria">
+          <div class="crit"><span>Experience (~5 yrs)</span><span class="crit-val pos">+20</span></div>
+          <div class="crit"><span>Python / SQL</span><span class="crit-val pos">+20</span></div>
+          <div class="crit"><span>Kafka / Streaming</span><span class="crit-val zero">+0</span></div>
+          <div class="crit"><span>Data Platform (4 found)</span><span class="crit-val pos">+25</span></div>
+          <div class="crit"><span>Seniority (4 found)</span><span class="crit-val pos">+17</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>Not affiliated with LinkedIn Corporation.</footer>
+</body>
+</html>
