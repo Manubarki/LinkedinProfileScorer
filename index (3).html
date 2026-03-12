@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LinkedIn Profile Scorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&family=Geist:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1629; --surface: #162040; --border: #1e2e55;
+      --accent: #00c8e0; --score: #ff6b6b; --text: #e8eaf6; --muted: #6b7db3;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Geist', sans-serif; font-weight: 300;
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 40px; border-bottom: 1px solid var(--border);
+    }
+    .logo { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--accent); color: #0f1629;
+      font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+      padding: 10px 20px; border-radius: 6px; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+
+    main {
+      flex: 1; display: grid; grid-template-columns: 1fr 1fr;
+      gap: 60px; align-items: center;
+      padding: 60px 40px; max-width: 1000px; margin: 0 auto; width: 100%;
+    }
+
+    .left .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid var(--border); background: var(--surface);
+      padding: 5px 12px; border-radius: 100px;
+      font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted);
+      letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 28px;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    h1 {
+      font-family: 'Instrument Serif', serif; font-size: clamp(36px, 5vw, 58px);
+      font-weight: 400; line-height: 1.08; letter-spacing: -0.02em; margin-bottom: 20px;
+    }
+    h1 em { font-style: italic; color: var(--score); }
+
+    .sub { font-size: 15px; color: var(--muted); line-height: 1.7; margin-bottom: 36px; max-width: 400px; }
+
+    .features { display: flex; flex-direction: column; gap: 10px; }
+    .feature { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; color: var(--muted); }
+    .feature-icon { color: var(--accent); font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+    .card-bar {
+      background: #1a2a50; padding: 12px 16px;
+      display: flex; align-items: center; gap: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .d { width: 9px; height: 9px; border-radius: 50%; }
+    .d.r{background:#ff5f57} .d.y{background:#febc2e} .d.g{background:#28c840}
+    .card-body { padding: 24px; }
+
+    .profile-row { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }
+    .avatar {
+      width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, #1e3a6e, #2d5a9f);
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .pname { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+    .ptitle { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+    .score-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+    .score-num { font-family: 'Instrument Serif', serif; font-size: 56px; color: var(--score); line-height: 1; }
+    .score-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--score); letter-spacing: 0.12em; text-transform: uppercase; }
+
+    .bar-wrap { height: 3px; background: var(--border); border-radius: 2px; margin-bottom: 20px; }
+    .bar-fill { height: 100%; width: 82%; background: linear-gradient(90deg, #4a9eff, var(--accent)); border-radius: 2px; animation: grow 1.5s ease both; }
+    @keyframes grow { from{width:0} to{width:82%} }
+
+    .criteria { display: flex; flex-direction: column; gap: 7px; }
+    .crit { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+    .crit-name { color: #99aac8; }
+    .tag { font-family: 'DM Mono', monospace; font-size: 10px; padding: 2px 8px; border-radius: 3px; }
+    .yes { background: rgba(0,200,224,0.12); color: var(--accent); }
+    .no  { background: rgba(255,107,107,0.1); color: var(--score); }
+    .part{ background: rgba(255,180,0,0.1); color: #ffb400; }
+
+    footer {
+      text-align: center; padding: 20px;
+      font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 700px) {
+      main { grid-template-columns: 1fr; padding: 40px 24px; gap: 40px; }
+      nav { padding: 16px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="logo">Profile Scorer</div>
+    <a href="#" class="btn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Add to Chrome
+    </a>
+  </nav>
+
+  <main>
+    <div class="left">
+      <div class="badge"><span class="dot"></span> Chrome Extension · Free</div>
+      <h1>Score candidates.<br/><em>Instantly.</em></h1>
+      <p class="sub">Define your hiring rubric once. The extension scores every LinkedIn profile against it in real time — right on the page.</p>
+      <div class="features">
+        <div class="feature"><span class="feature-icon">✦</span> LLM scores each profile against your criteria</div>
+        <div class="feature"><span class="feature-icon">✦</span> Highlights matching &amp; missing keywords inline</div>
+        <div class="feature"><span class="feature-icon">✦</span> Works on LinkedIn &amp; LinkedIn Recruiter</div>
+        <div class="feature"><span class="feature-icon">✦</span> Custom rubrics per role, saved automatically</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-bar">
+        <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+      </div>
+      <div class="card-body">
+        <div class="profile-row">
+          <div class="avatar">👩‍💻</div>
+          <div>
+            <div class="pname">Sarah Chen</div>
+            <div class="ptitle">Senior Data Engineer · Stripe, Databricks</div>
+          </div>
+        </div>
+        <div class="score-row">
+          <div class="score-num">82</div>
+          <div class="score-label">Strong Fit</div>
+        </div>
+        <div class="bar-wrap"><div class="bar-fill"></div></div>
+        <div class="criteria">
+          <div class="crit"><span class="crit-name">Python / SQL</span><span class="tag yes">✓ match</span></div>
+          <div class="crit"><span class="crit-name">Spark / dbt</span><span class="tag yes">✓ match</span></div>
+          <div class="crit"><span class="crit-name">Orchestration</span><span class="tag yes">✓ match</span></div>
+          <div class="crit"><span class="crit-name">Kafka / Streaming</span><span class="tag no">✗ missing</span></div>
+          <div class="crit"><span class="crit-name">Cloud infra</span><span class="tag part">~ partial</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>Not affiliated with LinkedIn Corporation.</footer>
+</body>
+</html>
