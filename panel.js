@@ -11,20 +11,71 @@
   }
 
   function getProfileContainer() {
-    const selectors = [
+    const isAshby = location.hostname === "app.ashbyhq.com";
+    const isLinkedInRecruiter = location.hostname.includes("linkedin.com") &&
+      (location.pathname.includes("/recruiter/") || location.pathname.includes("/talent/"));
+
+    if (isAshby) {
+      // Only look inside the react-pdf document — excludes banner, sidebar, feed.
+      const ashbySelectors = [
+        ".react-pdf__Document",
+        ".react-tabs__tab-panel--selected",
+        "[data-testid='resume-panel']",
+        "[data-testid='candidate-detail']",
+        "[data-testid='application-detail']",
+        "[data-testid='candidate-profile']",
+      ];
+      for (let sel of ashbySelectors) {
+        const candidates = document.querySelectorAll(sel);
+        for (let i = 0; i < candidates.length; i++) {
+          const el = candidates[i];
+          if (isVisible(el) && el.innerText.length > 200) return el;
+        }
+      }
+      return document.body.innerText.length > 200 ? document.body : null;
+    }
+
+    if (isLinkedInRecruiter) {
+      // Only target the right-side profile panel — never the left sidebar or middle list.
+      // Never fall back to document.body: too much noise from project names and message previews.
+      const recruiterSelectors = [
+        // Primary: LinkedIn Recruiter profile panel (id/data-test confirmed from DOM inspection)
+        "#profile-container",
+        "[data-test-profile-container]",
+        ".profile__container",
+        "[data-view-name='profile-main-container']",
+        // Slide-in profile panel (search results page)
+        ".slide-in-panel",
+        // Messaging/thread right panel fallbacks
+        "[data-test-id='thread-detail']",
+        "[data-test-id='message-thread-detail']",
+        "[class*='thread-detail']",
+        "[class*='threadDetail']",
+      ];
+      for (let sel of recruiterSelectors) {
+        const candidates = document.querySelectorAll(sel);
+        for (let i = 0; i < candidates.length; i++) {
+          const el = candidates[i];
+          if (isVisible(el) && el.innerText.length > 100) return el;
+        }
+      }
+      return null; // Nothing matched — skip rather than highlight the whole page
+    }
+
+    // Standard LinkedIn (public profile, talent pipeline, etc.)
+    const linkedInSelectors = [
       ".profile-presenter-layout", "[data-test-profile-container]", ".slide-in-panel",
       ".application-outlet", "[class*='profile-content']", "[class*='profile-detail']",
-      "[class*='candidate-profile']", "main.scaffold-layout__main", "[role='main']", "#main"
+      "[class*='candidate-profile']", "main.scaffold-layout__main",
     ];
-
-    for (let sel of selectors) {
+    for (let sel of linkedInSelectors) {
       const candidates = document.querySelectorAll(sel);
       for (let i = 0; i < candidates.length; i++) {
         const el = candidates[i];
         if (isVisible(el) && el.innerText.length > 200) return el;
       }
     }
-    return null;
+    return document.body.innerText.length > 200 ? document.body : null;
   }
 
   /* ===== SCORING LOGIC ===== */
@@ -38,16 +89,63 @@
         const y = parseInt(m[1], 10); if (y > 0 && y < 50) max = Math.max(max, y);
       }
     }
+    // Isolate the experience section so education start dates don't skew the range
+    let expText = text;
+    const expIdx = text.search(/\bexperience\b/);
+    const eduIdx = text.search(/\beducation\b/);
+    if (expIdx !== -1 && (eduIdx === -1 || expIdx < eduIdx)) {
+      expText = text.substring(expIdx, eduIdx !== -1 ? eduIdx : text.length);
+    } else if (expIdx !== -1) {
+      expText = text.substring(expIdx);
+    } else if (eduIdx !== -1) {
+      expText = text.substring(0, eduIdx);
+    }
+
     let earliest = now, match;
-    while ((match = datePat.exec(text)) !== null) {
+    while ((match = datePat.exec(expText)) !== null) {
       const start = parseInt(match[1], 10); if (start > 1980 && start <= now) earliest = Math.min(earliest, start);
     }
     if (earliest < now) max = Math.max(max, now - earliest);
     return Math.min(max, 40);
   }
 
+  function cleanText(raw) {
+    let text = raw
+      // Strip Ashby "viewing resume for <job title> job consideration" banner
+      .replace(/you.?re viewing the resume for .+? job consideration/gi, "")
+      // Strip Ashby "considered for jobs" sidebar block
+      .replace(/considered for jobs[\s\S]{0,300}?(?=\n{2,}|\bactivities\b|\bsummary\b|\bresume\b)/gi, "")
+      // Strip stage pill text like "→ Offer • R531167"
+      .replace(/→\s*\w[\w\s]*•\s*[A-Z]\d+\w*/g, "");
+
+    if (location.hostname === "app.ashbyhq.com") {
+      // On Ashby the Activity section is at the END of the PDF — strip it and everything after.
+      // Do NOT apply this on LinkedIn Recruiter: "Most recent activity" appears BEFORE the
+      // Summary/Experience sections, so the regex would erase all scoreable content.
+      text = text
+        .replace(/\bactivity\b[\s\S]*$/i, "")
+        .replace(/\d{2}\/\d{2}\/\d{4},\s+[^\n]+/gi, "");
+    }
+
+    return text;
+  }
+
+  function extractBodySection(t) {
+    // Returns text from the first work/experience/skills section onwards,
+    // skipping the candidate header (name + current title) to avoid noise.
+    const markers = [/\bexperience\b/, /\bwork history\b/, /\bemployment\b/, /\bskills\b/, /\babout\b/];
+    for (let m of markers) {
+      const idx = t.search(m);
+      if (idx > 50) return t.substring(idx); // >50 so we don't match a word in the very first line
+    }
+    // Fallback: skip the first 400 chars (covers name/title/company header)
+    return t.length > 400 ? t.substring(400) : t;
+  }
+
   function scoreProfile(text) {
     const t = text.toLowerCase();
+    // bodyText excludes the candidate header so title keywords don't pollute scoring
+    const bodyText = extractBodySection(t);
     let total = 0, bd = [];
 
     // Experience
@@ -55,18 +153,18 @@
     const ys = ye >= 10 ? 30 : ye >= 7 ? 20 : ye >= 5 ? 10 : 0;
     total += ys; bd.push({ l: `Experience (~${ye} yrs)`, p: ys });
 
-    // Language
-    const hj = /\bjava\b/.test(t.replace(/javascript/gi, "___")), hp = /\bpython\b/.test(t);
+    // Language — scan full body (skills section may list these)
+    const hj = /\bjava\b/.test(bodyText.replace(/javascript/gi, "___")), hp = /\bpython\b/.test(bodyText);
     const ls = (hj || hp) ? 15 : 0;
     const ld = []; if (hj) ld.push("Java"); if (hp) ld.push("Python");
     total += ls; bd.push({ l: `Language (${ld.length ? ld.join(", ") : "None"})`, p: ls });
 
-    // Kubernetes
-    const hk = /\b(kubernetes|k8s|kube|helm|eks|gke|aks)\b/.test(t);
+    // Kubernetes — scan full body
+    const hk = /\b(kubernetes|k8s|kube|helm|eks|gke|aks)\b/.test(bodyText);
     const ks = hk ? 15 : 0;
     total += ks; bd.push({ l: "Kubernetes" + (hk ? " \u2713" : ""), p: ks });
 
-    // Data Platform (NO HIVE)
+    // Data Platform — scan full body
     const dk = [
       { r: /\bdata platform\b/, w: 5 }, { r: /\bdata lake\b/, w: 4 }, { r: /\bsnowflake\b/, w: 4 },
       { r: /\bdatabricks\b/, w: 4 }, { r: /\bbigquery\b/, w: 4 }, { r: /\bdelta lake\b/, w: 4 },
@@ -79,11 +177,11 @@
       { r: /\biceberg\b/, w: 3 }, { r: /\bdbt\b/, w: 2 }
     ];
     let ds = 0, dmc = 0;
-    for (let item of dk) { if (item.r.test(t)) { ds += item.w; dmc++; } }
+    for (let item of dk) { if (item.r.test(bodyText)) { ds += item.w; dmc++; } }
     ds = Math.min(ds, 25); total += ds;
     bd.push({ l: `Data Platform (${dmc} found)`, p: ds });
 
-    // Seniority
+    // Seniority — scope to body only so current job title in header doesn't score
     const sk = [
       { r: /\barchitect\b/, w: 4 }, { r: /\bstaff (engineer|software)\b/, w: 5 },
       { r: /\bprincipal\b/, w: 5 }, { r: /\btech(nical)? lead\b/, w: 4 },
@@ -92,7 +190,7 @@
       { r: /\bmentoring\b/, w: 2 }
     ];
     let ss = 0, smc = 0;
-    for (let item of sk) { if (item.r.test(t)) { ss += item.w; smc++; } }
+    for (let item of sk) { if (item.r.test(bodyText)) { ss += item.w; smc++; } }
     ss = Math.min(ss, 15); total += ss;
     bd.push({ l: `Seniority (${smc} found)`, p: ss });
 
@@ -123,9 +221,16 @@
     allKw.sort((a, b) => b.word.length - a.word.length);
 
     let count = 0;
+    // Track when we've entered the Activity section so we stop highlighting there
+    let inActivitySection = false;
     function processNode(node) {
       if (node.nodeType !== 3) return;
       const text = node.textContent, textLower = text.toLowerCase();
+      // Stop highlighting once we hit the Ashby Activity section in the PDF
+      if (/^\s*activity\s*$/.test(textLower)) { inActivitySection = true; return; }
+      if (inActivitySection) return;
+      // Skip Ashby activity log lines (date-stamped audit entries)
+      if (/^\d{2}\/\d{2}\/\d{4},\s/.test(text.trim())) return;
       for (let k of allKw) {
         if (k.word === "java" && textLower.includes("javascript")) continue;
         const idx = textLower.indexOf(k.word);
@@ -207,13 +312,22 @@
     if (!container) return;
 
     const text = container.innerText;
-    if (Math.abs(text.length - lastScoredText.length) < 20) return;
+    if (lastScoredText && Math.abs(text.length - lastScoredText.length) < 20) return;
 
     lastScoredText = text;
 
     // SCORE
-    const result = scoreProfile(text);
-    const hlCount = highlightKeywords(container);
+    const result = scoreProfile(cleanText(text));
+
+    // Highlight container: must be strictly scoped so we never walk sidebar/feed nodes.
+    // - Ashby: always use .react-pdf__Document (PDF text layers only).
+    // - LinkedIn Recruiter: container is already the right-panel-only element from getProfileContainer().
+    // - Standard LinkedIn: container is already a scoped profile element.
+    let hlContainer = container;
+    if (location.hostname === "app.ashbyhq.com") {
+      hlContainer = document.querySelector(".react-pdf__Document") || null;
+    }
+    const hlCount = hlContainer ? highlightKeywords(hlContainer) : 0;
 
     // UPDATE UI
     const statusDiv = document.getElementById("lps-status");
@@ -255,5 +369,8 @@
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
+  // Fire sooner, then retry after 3s and 6s to catch SPA lazy-loaded content
   setTimeout(runAnalysis, 1500);
+  setTimeout(runAnalysis, 3000);
+  setTimeout(runAnalysis, 6000);
 })();

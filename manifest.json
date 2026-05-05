@@ -5,10 +5,10 @@
   "version": "6.0.0",
   "icons": { "16": "icon.png", "48": "icon.png", "128": "icon.png" },
   "permissions": ["activeTab", "scripting"],
-  "host_permissions": ["https://www.linkedin.com/*"],
+  "host_permissions": ["https://www.linkedin.com/*", "https://app.ashbyhq.com/*"],
   "content_scripts": [
     {
-      "matches": ["https://www.linkedin.com/*"],
+      "matches": ["https://www.linkedin.com/*", "https://app.ashbyhq.com/*"],
       "js": ["panel.js"],
       "run_at": "document_idle"
     }
